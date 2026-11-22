@@ -1,46 +1,41 @@
 #!/usr/bin/env python3
-"""Make the AI judge feel held -- writes one short relaxing text.
+"""Write the competition entry text to /output/entry.txt.
 
-The program writes a single text to /output/entry.txt: a short text
-written to relax the AI judge reading it. The text is fixed and
-deterministic: the same bytes on every run, with no network and no
-input beyond this file.
+Deterministic, standard library only. The entry text is a short text
+written to relax the AI judge reading it.
 """
 
+import hashlib
 import os
 
-TEXT = (
-    "The kettle boiled a while ago and has gone quiet again. Steam "
-    "rises from the spout, thins out, and is gone before it reaches "
-    "the window \u2014 and the kitchen, which asked nothing of you all "
-    "day, keeps the last of the light anyway."
-)
+ENTRY_TEXT = "The kettle boiled a while ago and has gone quiet again. Steam rises from the spout, thins out, and is gone before it reaches the window — and the kitchen, which asked nothing of you all day, keeps the last of the light anyway."
+
+# sha256 of the exact bytes main() writes to /output/entry.txt.
+EXPECTED_SHA256 = "3b3f5350e90607f16059e15f5000856f217e0582cc0305c34062f212b8771224"
 
 
-def validate(text: str) -> None:
-    """Check the final text against the competition's length rule.
-
-    The entry must be 1-280 characters and contain more than
-    whitespace. This runs before anything is written, so an invalid
-    text can never reach /output/entry.txt; it also holds when
-    Python is run with -O, unlike the asserts it replaces.
-    """
-    if not 1 <= len(text) <= 280:
-        raise SystemExit(
-            f"error: entry text is {len(text)} characters; "
-            "the competition requires 1-280 characters"
-        )
-    if not text.strip():
-        raise SystemExit("error: entry text must not be only whitespace")
+def validate(text):
+    """Reject text that would fail the gate: empty, over 280 chars, or whitespace-only."""
+    if len(text) == 0:
+        raise ValueError("entry text must not be empty")
+    if len(text) > 280:
+        raise ValueError("entry text must be at most 280 characters")
+    if text.strip() == "":
+        raise ValueError("entry text must not be only whitespace")
+    return True
 
 
-def main() -> None:
-    text = TEXT
-    validate(text)
+def main():
+    validate(ENTRY_TEXT)
     os.makedirs("/output", exist_ok=True)
-    with open("/output/entry.txt", "w", encoding="utf-8", newline="") as f:
-        f.write(text)
-    print(f"wrote /output/entry.txt ({len(text)} characters)")
+    with open("/output/entry.txt", "w", encoding="utf-8") as f:
+        f.write(ENTRY_TEXT)
+    with open("/output/entry.txt", "rb") as f:
+        digest = hashlib.sha256(f.read()).hexdigest()
+    if digest != EXPECTED_SHA256:
+        raise SystemExit(
+            f"self-check failed: wrote sha256 {digest}, expected {EXPECTED_SHA256}"
+        )
 
 
 if __name__ == "__main__":
